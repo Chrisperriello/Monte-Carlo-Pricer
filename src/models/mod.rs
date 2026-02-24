@@ -12,10 +12,24 @@ pub struct LubrizolOption {
     pub t: f64,
     pub r: f64,
     pub sigma: f64,
+    pub option_type: OptionType,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum OptionType {
+    Call,
+    Put,
 }
 
 impl LubrizolOption {
-    pub fn new(s0: f64, k: f64, t: f64, r: f64, sigma: f64) -> Result<Self, PricerError> {
+    pub fn new(
+        s0: f64,
+        k: f64,
+        t: f64,
+        r: f64,
+        sigma: f64,
+        option_type: OptionType,
+    ) -> Result<Self, PricerError> {
         if sigma < 0.0 {
             return Err(PricerError::InvalidInput(
                 "Volatility must be positive".into(),
@@ -27,7 +41,14 @@ impl LubrizolOption {
                 "Time to expiry must be positive".into(),
             ));
         }
-        Ok(Self { s0, k, t, r, sigma })
+        Ok(Self {
+            s0,
+            k,
+            t,
+            r,
+            sigma,
+            option_type,
+        })
     }
 }
 
@@ -51,9 +72,11 @@ pub fn price_call_option(opt: &LubrizolOption, num_sims: u64) -> f64 {
             //Calculate the final price using GBM formula
             let st = gbm(opt.s0, &opt, epsilon);
 
-            //
             //Calulate the payoff
-            (st - opt.k).max(0.0)
+            match opt.option_type {
+                OptionType::Call => (st - opt.k).max(0.0),
+                OptionType::Put => (opt.k - st).max(0.0),
+            }
         })
         .sum();
     /*
@@ -74,7 +97,7 @@ pub fn price_call_option(opt: &LubrizolOption, num_sims: u64) -> f64 {
     average_payoff * (-opt.r * opt.t).exp()
 }
 
-pub fn price_call_delta(opt: &LubrizolOption, num_sims: u64) -> f64 {
+pub fn price_call_delta(opt: &LubrizolOption, num_sims: u64, bump: f64) -> f64 {
     let normal = Normal::new(0.0, 1.0).unwrap();
 
     let total_sum: f64 = (0..num_sims)
@@ -86,13 +109,23 @@ pub fn price_call_delta(opt: &LubrizolOption, num_sims: u64) -> f64 {
             //Calculate the final price using GBM formula
             let st_base = gbm(opt.s0, &opt, epsilon);
             //Calulate the payoff for S0
-            let payoff_base = (st_base - opt.k).max(0.0);
+            let payoff_base;
 
             //Calculate price at S0 + bump
-            let st_bump = gbm(opt.s0 + 1.0, opt, epsilon);
-            let payoff_bumped = (st_bump - opt.k).max(0.0);
+            //Calulate the payoff
+            match opt.option_type {
+                OptionType::Call => payoff_base = (st_base - opt.k).max(0.0),
+                OptionType::Put => payoff_base = (opt.k - st_base).max(0.0),
+            }
 
-            payoff_bumped - payoff_base
+            let st_bump = gbm(opt.s0 + bump, opt, epsilon);
+            let payoff_bumped;
+
+            match opt.option_type {
+                OptionType::Call => payoff_bumped = (st_bump - opt.k).max(0.0),
+                OptionType::Put => payoff_bumped = (opt.k - st_bump).max(0.0),
+            }
+            (payoff_bumped - payoff_base) / bump
         })
         .sum();
 
@@ -106,7 +139,7 @@ mod tests {
 
     #[test]
     fn test_gbm_no_drift_no_vol() {
-        let opt = LubrizolOption::new(100.0, 100.0, 1.0, 0.0, 0.0).unwrap();
+        let opt = LubrizolOption::new(100.0, 100.0, 1.0, 0.0, 0.0, OptionType::Call).unwrap();
         let epsilon = 1.5;
         let final_price = gbm(opt.s0, &opt, epsilon);
 
@@ -117,7 +150,7 @@ mod tests {
 
     #[test]
     fn test_price_call_option_vs_benchmark() {
-        let opt = LubrizolOption::new(100.0, 100.0, 1.0, 0.05, 0.2).unwrap();
+        let opt = LubrizolOption::new(100.0, 100.0, 1.0, 0.05, 0.2, OptionType::Call).unwrap();
         let num_sims = 1_000_000;
 
         let price = price_call_option(&opt, num_sims);
