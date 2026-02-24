@@ -8,9 +8,11 @@ This project provides a robust framework for pricing European call options using
 
 ## Key Features
 
-- **Geometric Brownian Motion (GBM):** Accurately models stock price evolution using the standard stochastic differential equation.
-- **Parallel Simulation:** Leverages [Rayon](https://github.com/rayon-rs/rayon) to distribute simulations across multiple CPU cores, significantly reducing computation time for large numbers of samples.
-- **Type-Safe Implementation:** Built with Rust's strong typing to ensure mathematical correctness and memory safety.
+- **Geometric Brownian Motion (GBM):** Models stock price evolution using standard stochastic differential equations.
+- **Parallel Simulation:** Leverages [Rayon](https://github.com/rayon-rs/rayon) for data parallelism, distributing simulations across all available CPU cores.
+- **Greeks Calculation:** Supports calculation of **Delta** via finite difference methods within the Monte Carlo framework.
+- **Robust Error Handling:** Includes validation for option parameters (e.g., ensuring positive volatility and time to expiry).
+- **Type-Safe Implementation:** Built with Rust 2024 for memory safety and high performance.
 
 ## Mathematical Foundation
 
@@ -23,7 +25,7 @@ Where:
 - $r$: Risk-free interest rate
 - $\sigma$: Volatility
 - $t$: Time to expiry
-- $\epsilon$: Standard normal random variable
+- $\epsilon$: Standard normal random variable $\sim N(0,1)$
 
 ## Prerequisites
 
@@ -46,20 +48,25 @@ Where:
 ## Example Output
 
 ```text
---- Monte Carlo Option Pricer ---
-Simulations: 1000000
-Estimated Price: $10.4523
+Price: $10.4506
+Delta: 0.6124
 ```
+
+## Project Structure
+
+- `src/main.rs`: Entry point and example usage.
+- `src/lib.rs`: Library interface.
+- `src/models/mod.rs`: Core logic for `LubrizolOption`, GBM simulation, and pricing functions.
 
 ## Dependencies
 
 - `rand`: Random number generation.
 - `rand_distr`: Normal distribution sampling.
-- `rayon`: Data parallelism.
+- `rayon`: High-performance data parallelism.
 
 ## Roadmap
 
 - [ ] Support for Put Options.
-- [ ] Calculation of Greeks (Delta, Gamma, Vega, etc.).
+- [ ] Calculation of additional Greeks (Gamma, Vega, Theta).
 - [ ] Support for multiple time steps (Asian or American options).
-- [ ] CLI arguments for option parameters.
+- [ ] CLI arguments for dynamic option parameter input.
