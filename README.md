@@ -4,12 +4,13 @@ A high-performance Monte Carlo option pricer written in Rust, utilizing Geometri
 
 ## Overview
 
-This project provides a robust framework for pricing European call options using Monte Carlo methods. By simulating a large number of potential future price paths for an underlying asset, it estimates the fair value of an option based on its expected payoff.
+This project provides a robust framework for pricing European Call and Put options using Monte Carlo methods. By simulating a large number of potential future price paths for an underlying asset, it estimates the fair value of an option based on its expected payoff.
 
 ## Key Features
 
 - **Geometric Brownian Motion (GBM):** Models stock price evolution using standard stochastic differential equations.
 - **Parallel Simulation:** Leverages [Rayon](https://github.com/rayon-rs/rayon) for data parallelism, distributing simulations across all available CPU cores.
+- **Option Types:** Supports both **Call** and **Put** options.
 - **Greeks Calculation:** Supports calculation of **Delta** via finite difference methods within the Monte Carlo framework.
 - **Robust Error Handling:** Includes validation for option parameters (e.g., ensuring positive volatility and time to expiry).
 - **Type-Safe Implementation:** Built with Rust 2024 for memory safety and high performance.
@@ -56,7 +57,7 @@ Delta: 0.6124
 
 - `src/main.rs`: Entry point and example usage.
 - `src/lib.rs`: Library interface.
-- `src/models/mod.rs`: Core logic for `LubrizolOption`, GBM simulation, and pricing functions.
+- `src/models/mod.rs`: Core logic for `LubrizolOption`, GBM simulation, and pricing functions (supporting both Call and Put).
 
 ## Dependencies
 
@@ -66,7 +67,7 @@ Delta: 0.6124
 
 ## Roadmap
 
-- [ ] Support for Put Options.
+- [x] Support for Put Options.
 - [ ] Calculation of additional Greeks (Gamma, Vega, Theta).
 - [ ] Support for multiple time steps (Asian or American options).
 - [ ] CLI arguments for dynamic option parameter input.
