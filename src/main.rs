@@ -10,21 +10,26 @@ struct LubrizolOption {
     sigma: f64, // Volatitlity
 }
 
+impl LubrizolOption {
+    fn new(s0: f64, k: f64, t: f64, r: f64, sigma: f64) -> Self {
+        Self { s0, k, t, r, sigma }
+    }
+}
 fn gbm(opt: &LubrizolOption, epsilon: f64) -> f64 {
-    opt.s0 * (opt.r - ((opt.sigma.powi(2)) / 2.0)) * opt.t
-        + (opt.sigma * opt.t.sqrt() * epsilon).exp()
+    opt.s0
+        * ((opt.r - ((opt.sigma.powi(2)) / 2.0)) * opt.t + (opt.sigma * opt.t.sqrt() * epsilon))
+            .exp()
 }
 
 fn price_call_option(opt: &LubrizolOption, num_sims: u64) -> f64 {
     //let mut running_sum = 0.0;
-
-    let mut rng = rand::thread_rng();
 
     let normal = Normal::new(0.0, 1.0).unwrap();
 
     let total_sum: f64 = (0..num_sims)
         .into_par_iter()
         .map(|_| {
+            let mut rng = rand::thread_rng();
             let epsilon: f64 = normal.sample(&mut rng);
 
             //Calculate the final price using GBM formula
@@ -48,10 +53,16 @@ fn price_call_option(opt: &LubrizolOption, num_sims: u64) -> f64 {
     }
     */
 
-    let average_payoff = running_sum / (num_sims as f64);
+    let average_payoff = total_sum / (num_sims as f64);
     average_payoff * (-opt.r * opt.t).exp()
 }
 
 fn main() {
-    println!("Hello, world!");
+    let test = LubrizolOption::new(100.0, 100.0, 1.0, 0.05, 0.2);
+
+    let num_sims = 1_000_000;
+    let price = price_call_option(&test, num_sims);
+    println!("--- Monte Carlo Option Pricer ---");
+    println!("Simulations: {}", num_sims);
+    println!("Estimated Price: ${:.4}", price);
 }
