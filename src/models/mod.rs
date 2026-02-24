@@ -16,13 +16,13 @@ pub struct LubrizolOption {
 
 impl LubrizolOption {
     pub fn new(s0: f64, k: f64, t: f64, r: f64, sigma: f64) -> Result<Self, PricerError> {
-        if sigma <= 0.0 {
+        if sigma < 0.0 {
             return Err(PricerError::InvalidInput(
                 "Volatility must be positive".into(),
             ));
         }
 
-        if t <= 0.0 {
+        if t < 0.0 {
             return Err(PricerError::InvalidInput(
                 "Time to expiry must be positive".into(),
             ));
@@ -98,4 +98,33 @@ pub fn price_call_delta(opt: &LubrizolOption, num_sims: u64) -> f64 {
 
     let avg_delta = total_sum / (num_sims as f64);
     avg_delta * (-opt.r * opt.t).exp()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_gbm_no_drift_no_vol() {
+        let opt = LubrizolOption::new(100.0, 100.0, 1.0, 0.0, 0.0).unwrap();
+        let epsilon = 1.5;
+        let final_price = gbm(opt.s0, &opt, epsilon);
+
+        //Price should stay the same
+        let diff = (final_price - 100.0).abs();
+        assert!(diff < 1e-10);
+    }
+
+    #[test]
+    fn test_price_call_option_vs_benchmark() {
+        let opt = LubrizolOption::new(100.0, 100.0, 1.0, 0.05, 0.2).unwrap();
+        let num_sims = 1_000_000;
+
+        let price = price_call_option(&opt, num_sims);
+
+        let real = 10.4506;
+
+        let diff = (price - real).abs();
+        assert!(diff < 0.01);
+    }
 }
