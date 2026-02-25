@@ -58,7 +58,7 @@ fn gbm(start_price: f64, opt: &LubrizolOption, epsilon: f64) -> f64 {
             .exp()
 }
 
-pub fn price_call_option(opt: &LubrizolOption, num_sims: u64) -> f64 {
+pub fn price_option(opt: &LubrizolOption, num_sims: u64) -> f64 {
     //let mut running_sum = 0.0;
 
     let normal = Normal::new(0.0, 1.0).unwrap();
@@ -105,7 +105,7 @@ pub fn price_call_option(opt: &LubrizolOption, num_sims: u64) -> f64 {
     average_payoff * (-opt.r * opt.t).exp()
 }
 
-pub fn price_call_delta(opt: &LubrizolOption, num_sims: u64, bump: f64) -> f64 {
+pub fn price_delta(opt: &LubrizolOption, num_sims: u64, bump: f64) -> f64 {
     let normal = Normal::new(0.0, 1.0).unwrap();
 
     let total_sum: f64 = (0..num_sims)
@@ -186,7 +186,7 @@ mod tests {
         let opt = LubrizolOption::new(100.0, 100.0, 1.0, 0.05, 0.2, OptionType::Call).unwrap();
         let num_sims = 1_000_000;
 
-        let price = price_call_option(&opt, num_sims);
+        let price = price_option(&opt, num_sims);
 
         let real = 10.4506;
 
