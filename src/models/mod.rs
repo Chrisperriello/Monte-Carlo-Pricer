@@ -72,11 +72,19 @@ pub fn price_call_option(opt: &LubrizolOption, num_sims: u64) -> f64 {
             //Calculate the final price using GBM formula
             let st = gbm(opt.s0, &opt, epsilon);
 
+            let payoff_pos;
             //Calulate the payoff
             match opt.option_type {
-                OptionType::Call => (st - opt.k).max(0.0),
-                OptionType::Put => (opt.k - st).max(0.0),
-            }
+                OptionType::Call => payoff_pos = (st - opt.k).max(0.0),
+                OptionType::Put => payoff_pos = (opt.k - st).max(0.0),
+            };
+
+            let st_neg = gbm(opt.s0, &opt, -epsilon);
+            let payoff_neg = match opt.option_type {
+                OptionType::Call => (st_neg - opt.k).max(0.0),
+                OptionType::Put => (opt.k - st_neg).max(0.0),
+            };
+            (payoff_pos + payoff_neg) / 2.0
         })
         .sum();
     /*
@@ -107,25 +115,50 @@ pub fn price_call_delta(opt: &LubrizolOption, num_sims: u64, bump: f64) -> f64 {
             let epsilon: f64 = normal.sample(&mut rng);
 
             //Calculate the final price using GBM formula
-            let st_base = gbm(opt.s0, &opt, epsilon);
+            // to deal with Antithetic Vaiates we average the
+            // positive and negative paths
+            let st_base_pos = gbm(opt.s0, &opt, epsilon);
             //Calulate the payoff for S0
             let payoff_base;
 
             //Calculate price at S0 + bump
             //Calulate the payoff
             match opt.option_type {
-                OptionType::Call => payoff_base = (st_base - opt.k).max(0.0),
-                OptionType::Put => payoff_base = (opt.k - st_base).max(0.0),
+                OptionType::Call => payoff_base = (st_base_pos - opt.k).max(0.0),
+                OptionType::Put => payoff_base = (opt.k - st_base_pos).max(0.0),
             }
 
-            let st_bump = gbm(opt.s0 + bump, opt, epsilon);
-            let payoff_bumped;
+            let st_bump_pos = gbm(opt.s0 + bump, opt, epsilon);
+            let payoff_bumped_pos;
 
             match opt.option_type {
-                OptionType::Call => payoff_bumped = (st_bump - opt.k).max(0.0),
-                OptionType::Put => payoff_bumped = (opt.k - st_bump).max(0.0),
+                OptionType::Call => payoff_bumped_pos = (st_bump_pos - opt.k).max(0.0),
+                OptionType::Put => payoff_bumped_pos = (opt.k - st_bump_pos).max(0.0),
             }
-            (payoff_bumped - payoff_base) / bump
+            let payoff_pos = (payoff_bumped_pos - payoff_base) / bump;
+
+            //Now for the negative
+            let st_base_neg = gbm(opt.s0, &opt, -epsilon);
+            //Calulate the payoff for S0
+            let payoff_base_neg;
+
+            //Calculate price at S0 + bump
+            //Calulate the payoff
+            match opt.option_type {
+                OptionType::Call => payoff_base_neg = (st_base_neg - opt.k).max(0.0),
+                OptionType::Put => payoff_base_neg = (opt.k - st_base_neg).max(0.0),
+            }
+
+            let st_bump_neg = gbm(opt.s0 + bump, opt, -epsilon);
+            let payoff_bumped_neg;
+
+            match opt.option_type {
+                OptionType::Call => payoff_bumped_neg = (st_bump_neg - opt.k).max(0.0),
+                OptionType::Put => payoff_bumped_neg = (opt.k - st_bump_neg).max(0.0),
+            }
+            let payoff_neg = (payoff_bumped_neg - payoff_base_neg) / bump;
+
+            (payoff_pos + payoff_neg) / 2.0
         })
         .sum();
 
