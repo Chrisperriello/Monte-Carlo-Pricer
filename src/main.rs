@@ -40,7 +40,6 @@ fn main() {
             let delta = price_delta(&opt, 1_000_000, 0.01);
 
             println!("--- Results for {} ---", args.kind.to_uppercase());
-            println!("Price: ${:.4}", price);
             println!("Delta: {:.4}", delta);
         }
         Err(e) => {
