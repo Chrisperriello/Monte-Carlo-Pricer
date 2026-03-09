@@ -46,7 +46,12 @@ fn main() {
                 (price.price - price.standard_error),
                 (price.price + price.standard_error)
             );
-            println!("Delta: {:.4}", delta);
+            println!(
+                "Delta: {:.4}, Low: {:.4}, High {:.4}",
+                delta.price,
+                (delta.price - delta.standard_error),
+                (delta.price + delta.standard_error)
+            );
         }
         Err(e) => {
             // Instead of crashing, we print a clean error message
