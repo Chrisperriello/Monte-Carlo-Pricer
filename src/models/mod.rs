@@ -138,10 +138,10 @@ pub fn price_option(opt: &LubrizolOption, num_sims: u64) -> PricingResult {
     }
 }
 
-pub fn price_delta(opt: &LubrizolOption, num_sims: u64, bump: f64) -> f64 {
+pub fn price_delta(opt: &LubrizolOption, num_sims: u64, bump: f64) -> PricingResult {
     let normal = Normal::new(0.0, 1.0).unwrap();
 
-    let total_sum: f64 = (0..num_sims)
+    let (sum_y, sum_squr_y): (f64, f64) = (0..num_sims)
         .into_par_iter()
         .map(|_| {
             let mut rng = rand::thread_rng();
@@ -191,12 +191,27 @@ pub fn price_delta(opt: &LubrizolOption, num_sims: u64, bump: f64) -> f64 {
             }
             let payoff_neg = (payoff_bumped_neg - payoff_base_neg) / bump;
 
-            (payoff_pos + payoff_neg) / 2.0
-        })
-        .sum();
+            let y = (payoff_pos + payoff_neg) / 2.0;
 
-    let avg_delta = total_sum / (num_sims as f64);
-    avg_delta * (-opt.r * opt.t).exp()
+            (y, y * y)
+        })
+        .reduce(|| (0.0, 0.0), |a, b| (a.0 + b.0, a.1 + b.1));
+    let m = num_sims as f64;
+    let avg_delta = sum_y / (m);
+    let discount = (-opt.r * opt.t).exp();
+    let price = avg_delta * discount;
+
+    // 2. Caluclate undiscounted sample
+    let variance = (sum_squr_y - (sum_y * sum_y) / m) / (m - 1.0);
+
+    //3. Calculate discounted standard error
+    let standard_error = (variance / m).sqrt() * discount;
+
+    PricingResult {
+        price,
+        standard_error,
+        num_sims,
+    }
 }
 
 #[cfg(test)]
@@ -229,4 +244,33 @@ mod tests {
         assert!(diff < 0.01);
     }
     */
+
+    #[test]
+    fn test_standard_error_convergence() {
+        let opt = LubrizolOption {
+            s0: 100.0,
+            k: 100.0,
+            t: 1.0,
+            r: 0.05,
+            sigma: 0.2,
+            option_type: OptionType::Call,
+        };
+
+        let result_10k = price_option(&opt, 10_000);
+        let result_40k = price_option(&opt, 40_000);
+
+        let ratio = result_10k.standard_error / result_40k.standard_error;
+
+        assert!(
+            ratio > 1.8 && ratio < 2.2,
+            "SE did not scale by ~2x, actual ratio: {}",
+            ratio
+        );
+
+        let (lower, upper) = result_40k.confidence_interval_95();
+        println!(
+            "Price: {:.4}, 95% CI: [{:.4}, {:.4}]",
+            result_40k.price, lower, upper
+        );
+    }
 }
