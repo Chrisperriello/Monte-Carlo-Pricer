@@ -5,7 +5,7 @@ use monte_carlo_pricer::models::{LubrizolOption, OptionType, price_delta, price_
 struct Args {
     #[arg(short, long, default_value_t = 100.0)]
     s0: f64,
-    #[arg(short, long, default_value_t = 100.0)]
+    #[arg(short = 'k', long, default_value_t = 100.0)]
     strike: f64,
     #[arg(short, long, default_value_t = 1.0)]
     time: f64,
@@ -13,7 +13,7 @@ struct Args {
     rate: f64,
     #[arg(short, long, default_value_t = 0.2)]
     vol: f64,
-    #[arg(short, long, default_value = "call")]
+    #[arg(short = 'o', long, default_value = "call")]
     kind: String,
 }
 fn main() {
@@ -40,8 +40,18 @@ fn main() {
             let delta = price_delta(&opt, 1_000_000, 0.01);
 
             println!("--- Results for {} ---", args.kind.to_uppercase());
-            println!("Price: ${:.4}", price);
-            println!("Delta: {:.4}", delta);
+            println!(
+                "Price: {:.4}, Low: {:.4}, High {:.4}",
+                price.price,
+                (price.price - price.standard_error),
+                (price.price + price.standard_error)
+            );
+            println!(
+                "Delta: {:.4}, Low: {:.4}, High {:.4}",
+                delta.price,
+                (delta.price - delta.standard_error),
+                (delta.price + delta.standard_error)
+            );
         }
         Err(e) => {
             // Instead of crashing, we print a clean error message

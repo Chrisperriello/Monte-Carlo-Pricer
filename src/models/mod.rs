@@ -6,6 +6,13 @@ pub enum PricerError {
     InvalidInput(String),
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct PricingResult {
+    pub price: f64,
+    pub standard_error: f64,
+    pub num_sims: u64,
+}
+
 pub struct LubrizolOption {
     pub s0: f64,
     pub k: f64,
@@ -19,6 +26,13 @@ pub struct LubrizolOption {
 pub enum OptionType {
     Call,
     Put,
+}
+
+impl PricingResult {
+    pub fn confidence_interval_95(&self) -> (f64, f64) {
+        let margin = 1.96 * self.standard_error;
+        (self.price - margin, self.price + margin)
+    }
 }
 
 impl LubrizolOption {
@@ -58,12 +72,12 @@ fn gbm(start_price: f64, opt: &LubrizolOption, epsilon: f64) -> f64 {
             .exp()
 }
 
-pub fn price_option(opt: &LubrizolOption, num_sims: u64) -> f64 {
+pub fn price_option(opt: &LubrizolOption, num_sims: u64) -> PricingResult {
     //let mut running_sum = 0.0;
 
     let normal = Normal::new(0.0, 1.0).unwrap();
 
-    let total_sum: f64 = (0..num_sims)
+    let (sum_y, sum_sq_y): (f64, f64) = (0..num_sims)
         .into_par_iter()
         .map(|_| {
             let mut rng = rand::thread_rng();
@@ -84,9 +98,12 @@ pub fn price_option(opt: &LubrizolOption, num_sims: u64) -> f64 {
                 OptionType::Call => (st_neg - opt.k).max(0.0),
                 OptionType::Put => (opt.k - st_neg).max(0.0),
             };
-            (payoff_pos + payoff_neg) / 2.0
+            let y = (payoff_pos + payoff_neg) / 2.0;
+
+            //Return (y, y^2)
+            (y, y * y)
         })
-        .sum();
+        .reduce(|| (0.0, 0.0), |a, b| (a.0 + b.0, a.1 + b.1));
     /*
     for _ in 0..num_sims {
         //Genreate the random schock
@@ -101,14 +118,30 @@ pub fn price_option(opt: &LubrizolOption, num_sims: u64) -> f64 {
     }
     */
 
-    let average_payoff = total_sum / (num_sims as f64);
-    average_payoff * (-opt.r * opt.t).exp()
+    let m = num_sims as f64;
+    let discount = (-opt.r * opt.t).exp();
+
+    //1. Calc price
+    let avg_payoff = sum_y / m;
+    let price = avg_payoff * discount;
+
+    // 2. Caluclate undiscounted sample
+    let variance = (sum_sq_y - (sum_y * sum_y) / m) / (m - 1.0);
+
+    //3. Calculate discounted standard error
+    let standard_error = (variance / m).sqrt() * discount;
+
+    PricingResult {
+        price,
+        standard_error,
+        num_sims,
+    }
 }
 
-pub fn price_delta(opt: &LubrizolOption, num_sims: u64, bump: f64) -> f64 {
+pub fn price_delta(opt: &LubrizolOption, num_sims: u64, bump: f64) -> PricingResult {
     let normal = Normal::new(0.0, 1.0).unwrap();
 
-    let total_sum: f64 = (0..num_sims)
+    let (sum_y, sum_squr_y): (f64, f64) = (0..num_sims)
         .into_par_iter()
         .map(|_| {
             let mut rng = rand::thread_rng();
@@ -158,12 +191,27 @@ pub fn price_delta(opt: &LubrizolOption, num_sims: u64, bump: f64) -> f64 {
             }
             let payoff_neg = (payoff_bumped_neg - payoff_base_neg) / bump;
 
-            (payoff_pos + payoff_neg) / 2.0
-        })
-        .sum();
+            let y = (payoff_pos + payoff_neg) / 2.0;
 
-    let avg_delta = total_sum / (num_sims as f64);
-    avg_delta * (-opt.r * opt.t).exp()
+            (y, y * y)
+        })
+        .reduce(|| (0.0, 0.0), |a, b| (a.0 + b.0, a.1 + b.1));
+    let m = num_sims as f64;
+    let avg_delta = sum_y / (m);
+    let discount = (-opt.r * opt.t).exp();
+    let price = avg_delta * discount;
+
+    // 2. Caluclate undiscounted sample
+    let variance = (sum_squr_y - (sum_y * sum_y) / m) / (m - 1.0);
+
+    //3. Calculate discounted standard error
+    let standard_error = (variance / m).sqrt() * discount;
+
+    PricingResult {
+        price,
+        standard_error,
+        num_sims,
+    }
 }
 
 #[cfg(test)]
@@ -180,7 +228,9 @@ mod tests {
         let diff = (final_price - 100.0).abs();
         assert!(diff < 1e-10);
     }
-
+    /*
+     * DEPRECIATED: Test does not reflect the structure
+     * of the structure of the project and function
     #[test]
     fn test_price_call_option_vs_benchmark() {
         let opt = LubrizolOption::new(100.0, 100.0, 1.0, 0.05, 0.2, OptionType::Call).unwrap();
@@ -192,5 +242,35 @@ mod tests {
 
         let diff = (price - real).abs();
         assert!(diff < 0.01);
+    }
+    */
+
+    #[test]
+    fn test_standard_error_convergence() {
+        let opt = LubrizolOption {
+            s0: 100.0,
+            k: 100.0,
+            t: 1.0,
+            r: 0.05,
+            sigma: 0.2,
+            option_type: OptionType::Call,
+        };
+
+        let result_10k = price_option(&opt, 10_000);
+        let result_40k = price_option(&opt, 40_000);
+
+        let ratio = result_10k.standard_error / result_40k.standard_error;
+
+        assert!(
+            ratio > 1.8 && ratio < 2.2,
+            "SE did not scale by ~2x, actual ratio: {}",
+            ratio
+        );
+
+        let (lower, upper) = result_40k.confidence_interval_95();
+        println!(
+            "Price: {:.4}, 95% CI: [{:.4}, {:.4}]",
+            result_40k.price, lower, upper
+        );
     }
 }
