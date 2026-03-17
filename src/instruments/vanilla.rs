@@ -2,7 +2,7 @@ use crate::instruments::Payoff;
 use crate::models::OptionType;
 
 #[derive(Debug, Clone, Copy)]
-struct VanillaOption {
+pub struct VanillaOption {
     pub strike: f64,
     pub expiry: f64,
     pub option_type: OptionType,
@@ -14,5 +14,9 @@ impl Payoff for VanillaOption {
             OptionType::Call => (s_t - self.strike).max(0.0),
             OptionType::Put => (self.strike - s_t).max(0.0),
         }
+    }
+
+    fn expiry(&self) -> f64 {
+        self.expiry
     }
 }
