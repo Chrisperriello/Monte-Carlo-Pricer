@@ -20,3 +20,13 @@ impl Payoff for VanillaOption {
         self.expiry
     }
 }
+
+impl VanillaOption {
+    pub fn new(strike: f64, expiry: f64, option_type: OptionType) -> Self {
+        Self {
+            strike,
+            expiry,
+            option_type,
+        }
+    }
+}

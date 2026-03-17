@@ -1,6 +1,4 @@
-use std::num::IntErrorKind;
-
-use crate::core::MarketData;
+use crate::core::market_data::MarketData;
 use crate::instruments::Payoff;
 use crate::models::PricingResult;
 use rand_distr::{Distribution, Normal};

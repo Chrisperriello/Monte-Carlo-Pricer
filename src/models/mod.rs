@@ -1,6 +1,3 @@
-use rand_distr::{Distribution, Normal};
-use rayon::prelude::*;
-
 #[derive(Debug, Clone, Copy)]
 pub struct PricingResult {
     pub price: f64,
