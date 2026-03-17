@@ -1,5 +1,5 @@
+use crate::instruments::OptionType;
 use crate::instruments::Payoff;
-use crate::models::OptionType;
 
 #[derive(Debug, Clone, Copy)]
 pub struct VanillaOption {

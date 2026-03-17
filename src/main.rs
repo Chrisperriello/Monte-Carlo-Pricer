@@ -1,5 +1,4 @@
 use clap::Parser;
-use monte_carlo_pricer::models::{LubrizolOption, OptionType, price_delta, price_option};
 
 #[derive(Parser)]
 struct Args {
@@ -18,29 +17,14 @@ struct Args {
 }
 fn main() {
     let args = Args::parse();
-
-    let opt_type;
-    if args.kind.to_lowercase() == "put" {
-        opt_type = OptionType::Put;
-    } else {
-        opt_type = OptionType::Call;
-    }
-
-    let result = LubrizolOption::new(
-        args.s0,
-        args.strike,
-        args.time,
-        args.rate,
-        args.vol,
-        opt_type,
-    );
+    /*
     match result {
         Ok(opt) => {
-            let price = price_option(&opt, 1_000_000);
-            let delta = price_delta(&opt, 1_000_000, 0.01);
+            // let price = price_option(&opt, 1_000_000);
+            //let delta = price_delta(&opt, 1_000_000, 0.01);
 
             println!("--- Results for {} ---", args.kind.to_uppercase());
-            println!(
+            /*    println!(
                 "Price: {:.4}, Low: {:.4}, High {:.4}",
                 price.price,
                 (price.price - price.standard_error),
@@ -52,10 +36,12 @@ fn main() {
                 (delta.price - delta.standard_error),
                 (delta.price + delta.standard_error)
             );
+            */
         }
         Err(e) => {
             // Instead of crashing, we print a clean error message
             println!("Error: {:?}", e);
         }
     }
+     */
 }
