@@ -34,7 +34,7 @@ fn main() {
     let env = MarketData::new(args.s0, args.rate, args.vol).unwrap();
 
     let price = price_mc(&option, &env, 1_000_000);
-    let delta = price_delta(&option, &env, 1_000_000, 0.01);
+    let delta = price_delta(&option, &env, 1_000_000, 0.01).unwrap();
 
     println!("--- Results for {} ---", args.kind.to_uppercase());
     println!(

@@ -60,7 +60,7 @@ pub fn price_delta<I: Payoff + Sync>(
     env: &MarketData,
     num_sims: u64,
     bump: f64,
-) -> PricingResult {
+) -> Result<PricingResult, String> {
     let normal = Normal::new(0.0, 1.0).unwrap();
 
     let (sum_y, sum_squr_y): (f64, f64) = (0..num_sims)
@@ -118,9 +118,9 @@ pub fn price_delta<I: Payoff + Sync>(
     //3. Calculate discounted standard error
     let standard_error = (variance / m).sqrt() * discount;
 
-    PricingResult {
+    Ok(PricingResult {
         price,
         standard_error,
         num_sims,
-    }
+    })
 }
